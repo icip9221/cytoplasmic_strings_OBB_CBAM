@@ -1,0 +1,61 @@
+builder: Blastocyst
+
+cfg:
+  pipeline:
+    BlastocystYoloOBBHandler:
+      config:
+        task: yolo_obb_experiment
+
+        experiment:
+          name_ref: cbam
+          dataset_variant: positive_only
+
+        # best_pt_path_ref: yolo11m_obb_cbam_v2
+
+        model:
+          architecture_ref: yolo11m_obb_cbam
+          weight_ref: yolo11m_obb_pretrained
+          shift_from: 11
+
+        train:
+          enabled: true
+          imgsz: 800
+          epochs: 200
+          batch: 8
+          workers: 4
+          patience: 30
+          mosaic: 0.0
+          scale: 0.0
+          optimizer: auto
+          # lr0: 0.01
+          device: 1
+          seed: 0
+          exist_ok: false
+          resume: false
+
+        pt_eval:
+          enabled: true
+          split: test
+          imgsz: 800
+          conf: 0.1
+          iou: 0.5
+          device: 1
+          plots: true
+
+        onnx_export:
+          opset: 17
+          simplify: true
+          imgsz: 800
+          device: 1
+
+        onnx_eval:
+          enabled: true
+          split: test
+          imgsz: 800
+          conf: 0.1
+          iou: 0.5
+          device: 1
+          plots: true
+
+        predict:
+          enabled: false

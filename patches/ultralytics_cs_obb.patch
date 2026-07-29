@@ -1,0 +1,176 @@
+diff --git a/ultralytics/nn/modules/cbam.py b/ultralytics/nn/modules/cbam.py
+new file mode 100644
+index 0000000..0cd0b0d
+--- /dev/null
++++ b/ultralytics/nn/modules/cbam.py
+@@ -0,0 +1,33 @@
++"""Compatibility CBAM module for the CS-OBB publication model."""
++
++import torch
++import torch.nn as nn
++
++from ultralytics.nn.modules.conv import SpatialAttention
++
++
++class ChannelAttention(nn.Module):
++    """Historical ChannelAttention used by the paper CBAM checkpoint."""
++
++    def __init__(self, channels: int) -> None:
++        super().__init__()
++        self.pool = nn.AdaptiveAvgPool2d(1)
++        self.fc = nn.Conv2d(channels, channels, 1, 1, 0, bias=True)
++
++    def forward(self, x: torch.Tensor) -> torch.Tensor:
++        return x * torch.sigmoid(self.fc(self.pool(x)))
++
++
++class CBAM(nn.Module):
++    """Historical CBAM block used immediately before P5 feature fusion."""
++
++    def __init__(self, c1: int) -> None:
++        super().__init__()
++        self.channel_attention = ChannelAttention(c1)
++        self.spatial_attention = SpatialAttention()
++
++    def forward(self, x: torch.Tensor) -> torch.Tensor:
++        return self.spatial_attention(self.channel_attention(x))
++
++
++__all__ = ["CBAM", "ChannelAttention", "SpatialAttention"]
+diff --git a/ultralytics/models/yolo/obb/val.py b/ultralytics/models/yolo/obb/val.py
+index e51d294..c1f5229 100644
+--- a/ultralytics/models/yolo/obb/val.py
++++ b/ultralytics/models/yolo/obb/val.py
+@@ -57,6 +57,10 @@ class OBBValidator(DetectionValidator):
+         """
+         super().__init__(dataloader, save_dir, args, _callbacks)
+         self.args.task = "obb"
++        base_iou = torch.linspace(0.5, 0.95, 10)
++        extra_iou = torch.tensor([0.25])
++        self.iouv = torch.cat((extra_iou, base_iou)).to(self.device)
++        self.niou = self.iouv.numel()
+         self.metrics = OBBMetrics()
+ 
+     def init_metrics(self, model: torch.nn.Module) -> None:
+@@ -70,6 +74,17 @@ class OBBValidator(DetectionValidator):
+         self.is_dota = isinstance(val, str) and "DOTA" in val  # check if dataset is DOTA format
+         self.confusion_matrix.task = "obb"  # set confusion matrix task to 'obb'
+ 
++    def get_stats(self) -> dict[str, Any]:
++        """Process OBB statistics with historical AP integration for direct evaluation only."""
++        self.metrics.process(
++            save_dir=self.save_dir,
++            plot=self.args.plots,
++            on_plot=self.on_plot,
++            legacy_ap=not self.training,
++        )
++        self.metrics.clear_stats()
++        return self.metrics.results_dict
++
+     def _process_batch(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> dict[str, np.ndarray]:
+         """Compute the correct prediction matrix for a batch of detections and ground truth bounding boxes.
+ 
+diff --git a/ultralytics/nn/modules/__init__.py b/ultralytics/nn/modules/__init__.py
+index fc19560..1ed7a8b 100644
+--- a/ultralytics/nn/modules/__init__.py
++++ b/ultralytics/nn/modules/__init__.py
+@@ -60,8 +60,8 @@ from .block import (
+     SCDown,
+     TorchVision,
+ )
++from .cbam import CBAM
+ from .conv import (
+-    CBAM,
+     ChannelAttention,
+     Concat,
+     Conv,
+diff --git a/ultralytics/nn/tasks.py b/ultralytics/nn/tasks.py
+index bcaf699..9ae48b1 100644
+--- a/ultralytics/nn/tasks.py
++++ b/ultralytics/nn/tasks.py
+@@ -18,6 +18,7 @@ from ultralytics.nn.modules import (
+     C2PSA,
+     C3,
+     C3TR,
++    CBAM,
+     ELAN1,
+     OBB,
+     OBB26,
+@@ -1764,6 +1765,9 @@ def parse_model(d, ch, verbose=True):
+                     args.extend((True, 1.2))
+             if m is C2fCIB:
+                 legacy = False
++        elif m is CBAM:
++            c1 = c2 = ch[f]
++            args = [c1]
+         elif m is AIFI:
+             args = [ch[f], *args]
+         elif m in frozenset({HGStem, HGBlock}):
+diff --git a/ultralytics/utils/metrics.py b/ultralytics/utils/metrics.py
+index fc3e926..82d35ad 100644
+--- a/ultralytics/utils/metrics.py
++++ b/ultralytics/utils/metrics.py
+@@ -753,7 +753,9 @@ def plot_mc_curve(
+         on_plot(save_dir, {"type": f"{ylabel.lower()}_curve", "x": px.tolist(), "y": py.tolist()})
+ 
+ 
+-def compute_ap(recall: list[float], precision: list[float]) -> tuple[float, np.ndarray, np.ndarray]:
++def compute_ap(
++    recall: list[float], precision: list[float], legacy: bool = False
++) -> tuple[float, np.ndarray, np.ndarray]:
+     """Compute the average precision (AP) given the recall and precision curves.
+ 
+     Args:
+@@ -765,9 +767,13 @@ def compute_ap(recall: list[float], precision: list[float]) -> tuple[float, np.n
+         mpre (np.ndarray): Precision envelope curve.
+         mrec (np.ndarray): Modified recall curve with sentinel values added at the beginning and end.
+     """
+-    # Append sentinel values to beginning and end
+-    mrec = np.concatenate(([0.0], recall, [recall[-1] if len(recall) else 1.0], [1.0]))
+-    mpre = np.concatenate(([1.0], precision, [0.0], [0.0]))
++    # Historical direct OBB evaluation used a single terminal sentinel.
++    if legacy:
++        mrec = np.concatenate(([0.0], recall, [1.0]))
++        mpre = np.concatenate(([1.0], precision, [0.0]))
++    else:
++        mrec = np.concatenate(([0.0], recall, [recall[-1] if len(recall) else 1.0], [1.0]))
++        mpre = np.concatenate(([1.0], precision, [0.0], [0.0]))
+ 
+     # Compute the precision envelope
+     mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
+@@ -796,6 +802,7 @@ def ap_per_class(
+     names: dict[int, str] = {},
+     eps: float = 1e-16,
+     prefix: str = "",
++    legacy_ap: bool = False,
+ ) -> tuple:
+     """Compute the average precision per class for object detection evaluation.
+ 
+@@ -859,7 +866,7 @@ def ap_per_class(
+ 
+         # AP from recall-precision curve
+         for j in range(tp.shape[1]):
+-            ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j])
++            ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j], legacy=legacy_ap)
+             if j == 0:
+                 prec_values.append(np.interp(x, mrec, mpre))  # precision at mAP@0.5
+ 
+@@ -1138,7 +1145,9 @@ class DetMetrics(SimpleClass, DataExportMixin):
+             self.stats[k].append(stat[k])
+         self.box.update_image_metrics(stat["tp"], stat["target_cls"], stat["pred_cls"], stat["im_name"])
+ 
+-    def process(self, save_dir: Path = Path("."), plot: bool = False, on_plot=None) -> dict[str, np.ndarray]:
++    def process(
++        self, save_dir: Path = Path("."), plot: bool = False, on_plot=None, legacy_ap: bool = False
++    ) -> dict[str, np.ndarray]:
+         """Process predicted results for object detection and update metrics.
+ 
+         Args:
+@@ -1162,6 +1171,7 @@ class DetMetrics(SimpleClass, DataExportMixin):
+             names=self.names,
+             on_plot=on_plot,
+             prefix="Box",
++            legacy_ap=legacy_ap,
+         )[2:]
+         self.box.nc = len(self.names)
+         self.box.update(results)
