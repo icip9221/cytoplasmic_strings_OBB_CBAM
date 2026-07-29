@@ -5,8 +5,8 @@ pipeline:
 
     datasets:
       positive_only:
-        # Required: local dataset YAML for the positive-only data_622_2 split.
-        data_yaml: /path/to/data_622_2/data.yaml
+        # Required: local YOLO OBB dataset configuration.
+        data_yaml: /path/to/dataset/data.yaml
         # Required: output root. The experiment name is appended automatically.
         project_root: outputs/yolo_obb/positive_only
 
