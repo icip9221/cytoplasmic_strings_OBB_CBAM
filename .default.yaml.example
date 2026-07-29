@@ -5,18 +5,14 @@ pipeline:
 
     datasets:
       positive_only:
+        # Required: local dataset YAML for the positive-only data_622_2 split.
         data_yaml: /path/to/data_622_2/data.yaml
-        project_root: /path/to/CS_obb/outputs/yolo_obb/positive_only
+        # Required: output root. The experiment name is appended automatically.
+        project_root: outputs/yolo_obb/positive_only
 
     weights:
+      # Downloaded automatically by Ultralytics if missing.
       yolo11m_obb_pretrained: yolo11m-obb.pt
-      yolo11m_obb_cbam4_best: /path/to/historical/yolo11m-obb-1cbam-4/weights/best.pt
 
     architectures:
-      yolo11m_obb_cbam: /path/to/CS_obb/configs/yolo11m-obb-1cbam.yaml
-
-    exports:
-      output_dir: /path/to/CS_obb/outputs/yolo_obb/exports
-
-    inference:
-      output_dir: /path/to/CS_obb/outputs/yolo_obb/inference
+      yolo11m_obb_cbam: configs/yolo11m-obb-1cbam.yaml

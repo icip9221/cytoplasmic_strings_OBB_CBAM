@@ -155,10 +155,7 @@ def eval_yolo_obb_model(
     validator = OBBValidator(args=eval_cfg)
     print(f"{eval_key} model: {model_path.resolve()}")
     print(f"Ultralytics import: {Path(ultralytics.__file__).resolve()}")
-    print(
-        f"Loaded model: {type(model.model).__module__}.{type(model.model).__name__}, "
-        f"parameters={sum(parameter.numel() for parameter in model.model.parameters())}"
-    )
+    print(f"Loaded model: {_model_summary(model)}")
     print(f"Dataset YAML: {Path(eval_cfg['data']).resolve()}")
     print(f"{eval_cfg['split']} list: {Path(split_list).resolve() if split_list else split_list}")
     print(f"model.val arguments: {json.dumps(json_safe(eval_cfg), ensure_ascii=False, sort_keys=True)}")
@@ -210,6 +207,15 @@ def extract_obb_eval_metrics(metrics: Any) -> dict[str, Any]:
         "precision": float(metrics.box.p[0] * 100),
         "recall": float(metrics.box.r[0] * 100),
     }
+
+
+def _model_summary(model: Any) -> str:
+    loaded = getattr(model, "model", None)
+    name = f"{type(loaded).__module__}.{type(loaded).__name__}"
+    if hasattr(loaded, "parameters"):
+        params = sum(parameter.numel() for parameter in loaded.parameters())
+        return f"{name}, parameters={params}"
+    return f"{name}, parameters=n/a"
 
 
 def predict_with_yolo(cfg: dict[str, Any], model_path: Path) -> None:
