@@ -1,14 +1,14 @@
 # Cytoplasmic String Detection
 
-Official implementation for:
+Official implementation of:
 
 > **Deep Learning-Based Imaging Informatics for Automated Detection of Cytoplasmic Strings in Embryo Time-Lapse Microscopy**
 
-This repository contains the paper-scoped training, evaluation, and ONNX export pipeline for oriented cytoplasmic-string detection using YOLO OBB with CBAM.
+This repository provides the training, evaluation, and deployment-oriented export pipeline developed for automated oriented detection of cytoplasmic strings in embryo time-lapse microscopy.
 
 ## Overview
 
-The project preserves the original shell-and-YAML workflow used in the study:
+The implementation follows a reproducible shell-and-YAML workflow:
 
 ```text
 scripts/run_pipeline.sh
@@ -18,15 +18,15 @@ scripts/run_pipeline.sh
 → training, evaluation, and ONNX export
 ```
 
-The pipeline supports:
+The pipeline includes:
 
-- YOLO11m OBB with one CBAM block
-- pretrained-weight transfer
+- YOLO OBB architectures with CBAM integration
+- pretrained-weight initialization
 - PyTorch training and validation
 - automatic ONNX export after training
 - ONNX validation
 - AP25, AP50, and mAP50–95 reporting
-- standard Ultralytics plots and experiment reports
+- standard Ultralytics visualizations and experiment reports
 
 ## Repository Setup
 
@@ -43,26 +43,21 @@ Create the local runtime configuration:
 cp .default.yaml.example default.yaml
 ```
 
-Edit the documented paths in `default.yaml`, especially:
+Edit the required paths in `default.yaml`, including the dataset YAML and output location.
 
-- dataset YAML path
-- output directory
-- architecture YAML path
-- optional checkpoint paths for evaluation-only runs
-
-Prepare and verify the patched Ultralytics runtime:
+Prepare and verify the project runtime:
 
 ```bash
 bash scripts/setup_ultralytics.sh
 bash scripts/verify_ultralytics.sh
 ```
 
-The setup script clones the pinned Ultralytics version and applies the project-specific changes required for:
+The setup script clones the pinned Ultralytics revision and applies the minimal project-specific extensions required for:
 
 - CBAM model construction
 - OBB evaluation at IoU 0.25
-- AP25/AP50 indexing
-- the historical AP integration used in the paper evaluation
+- AP25, AP50, and mAP50–95 reporting
+- consistent PyTorch and ONNX evaluation through the same OBB pipeline
 
 ## Dataset Format
 
@@ -95,11 +90,11 @@ labels/
 └── test.cache
 ```
 
-Each image must have a corresponding YOLO OBB label file with the same stem. The split text files should contain the image paths used for training, validation, and testing. The `data.yaml` file must reference the dataset root and the three split files.
+Each image must have a corresponding YOLO OBB annotation file with the same filename stem. The split files should list the images assigned to the training, validation, and test sets. The dataset YAML must reference the dataset root and the corresponding split definitions.
 
 ## Run the Pipeline
 
-Run the complete paper pipeline with:
+Run the complete training and evaluation workflow with:
 
 ```bash
 bash scripts/run_pipeline.sh configs/yolo_obb_train.yaml
@@ -107,7 +102,7 @@ bash scripts/run_pipeline.sh configs/yolo_obb_train.yaml
 
 The default workflow performs:
 
-1. model construction and pretrained-weight transfer
+1. model construction and pretrained-weight initialization
 2. PyTorch training
 3. PyTorch checkpoint evaluation
 4. ONNX export
@@ -135,15 +130,13 @@ outputs/yolo_obb/positive_only/yolo11m-obb-1cbam/
 └── yolo_obb_experiment_report.json
 ```
 
-The reported OBB metrics include:
+Reported OBB metrics include:
 
 - AP25
 - AP50
 - mAP50–95
 - precision
 - recall
-
-Small numerical differences between PyTorch and ONNX inference may occur because of backend precision, graph optimization, preprocessing, post-processing, or NMS behavior.
 
 ## Configuration
 
@@ -153,17 +146,20 @@ The main experiment configuration is:
 configs/yolo_obb_train.yaml
 ```
 
-The CBAM architecture is defined in:
+Available CBAM architecture definitions include:
 
 ```text
+configs/yolov8m-obb-1cbam.yaml
 configs/yolo11m-obb-1cbam.yaml
+configs/yolo12m-obb-1cbam.yaml
 ```
 
-Private paths belong in `default.yaml`, which should remain untracked. The public `.default.yaml.example` preserves the required configuration structure without exposing local paths.
+Local paths belong in `default.yaml`, which should remain untracked. The public `.default.yaml.example` preserves the required configuration structure without exposing environment-specific paths.
 
-## Notes
+## Reproducibility Notes
 
-- Do not install an arbitrary Ultralytics version from `main`; use `scripts/setup_ultralytics.sh`.
+- Use `scripts/setup_ultralytics.sh` rather than an arbitrary Ultralytics checkout.
 - Run `scripts/verify_ultralytics.sh` before training or evaluation.
-- The dataset and trained model weights are not included in the Git repository.
-- Generated outputs, checkpoints, and the locally cloned Ultralytics runtime should remain untracked.
+- The dataset and trained weights are distributed separately from the source code.
+- Generated outputs, checkpoints, and the locally prepared Ultralytics runtime should remain untracked.
+- PyTorch and ONNX results are evaluated through the same project pipeline; minor backend-level numerical variation may occur.
