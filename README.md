@@ -4,7 +4,7 @@ Official implementation of:
 
 > **Deep Learning-Based Imaging Informatics for Automated Detection of Cytoplasmic Strings in Embryo Time-Lapse Microscopy**
 
-This repository provides the training, evaluation, and deployment-oriented export pipeline developed for automated oriented detection of cytoplasmic strings in embryo time-lapse microscopy.
+This repository provides the shared HBB/OBB training, evaluation, and deployment-oriented export pipeline developed for automated detection of cytoplasmic strings in embryo time-lapse microscopy.
 
 ## Overview
 
@@ -14,13 +14,14 @@ The implementation follows a reproducible shell-and-YAML workflow:
 scripts/run_pipeline.sh
 → main.py
 → builder and registry
-→ YOLO OBB handler
+→ shared YOLO detection handler
 → training, evaluation, and ONNX export
 ```
 
 The pipeline includes:
 
-- YOLO OBB architectures with CBAM integration
+- YOLO HBB and OBB experiments through one handler
+- custom OBB architectures with CBAM integration
 - pretrained-weight initialization
 - PyTorch training and validation
 - automatic ONNX export after training
@@ -55,15 +56,15 @@ bash scripts/verify_ultralytics.sh
 The setup script clones the pinned Ultralytics revision and applies the minimal project-specific extensions required for:
 
 - CBAM model construction
-- OBB evaluation at IoU 0.25
+- HBB and OBB evaluation at IoU 0.25
 - AP25, AP50, and mAP50–95 reporting
-- consistent PyTorch and ONNX evaluation through the same OBB pipeline
+- consistent PyTorch and ONNX evaluation through the same task-specific Ultralytics validator
 
 ## Dataset Format
 
 The dataset is not included in this repository.
 
-Use the standard YOLO OBB directory structure:
+Use the standard Ultralytics YOLO directory structure, with HBB or OBB labels matching the selected task:
 
 ```text
 dataset_root/
@@ -90,13 +91,14 @@ labels/
 └── test.cache
 ```
 
-Each image must have a corresponding YOLO OBB annotation file with the same filename stem. The split files should list the images assigned to the training, validation, and test sets. The dataset YAML must reference the dataset root and the corresponding split definitions.
+Each image must have a corresponding YOLO annotation file with the same filename stem. The split files should list the images assigned to the training, validation, and test sets. The dataset YAML must reference the dataset root and the corresponding split definitions.
 
 ## Run the Pipeline
 
-Run the complete training and evaluation workflow with:
+Run either complete training and evaluation workflow with:
 
 ```bash
+bash scripts/run_pipeline.sh configs/yolo_hbb_train.yaml
 bash scripts/run_pipeline.sh configs/yolo_obb_train.yaml
 ```
 
@@ -114,7 +116,7 @@ The default workflow performs:
 A completed experiment is written under the configured output root, for example:
 
 ```text
-outputs/yolo_obb/positive_only/yolo11m-obb-1cbam/
+outputs/yolo_detection/obb/yolo11m-obb-1cbam/
 ├── weights/
 │   ├── best.pt
 │   ├── last.pt
@@ -127,10 +129,10 @@ outputs/yolo_obb/positive_only/yolo11m-obb-1cbam/
 │   └── validation plots
 ├── results.csv
 ├── results.png
-└── yolo_obb_experiment_report.json
+└── yolo_detection_experiment_report.json
 ```
 
-Reported OBB metrics include:
+Reported detection metrics include:
 
 - AP25
 - AP50
@@ -140,21 +142,22 @@ Reported OBB metrics include:
 
 ## Configuration
 
-The main experiment configuration is:
+The active experiment configurations are:
 
 ```text
+configs/yolo_hbb_train.yaml
 configs/yolo_obb_train.yaml
 ```
 
 Available CBAM architecture definitions include:
 
 ```text
-configs/yolov8m-obb-1cbam.yaml
-configs/yolo11m-obb-1cbam.yaml
-configs/yolo12m-obb-1cbam.yaml
+configs/obb/yolov8m-obb-1cbam.yaml
+configs/obb/yolo11m-obb-1cbam.yaml
+configs/obb/yolo12m-obb-1cbam.yaml
 ```
 
-Local paths belong in `default.yaml`, which should remain untracked. The public `.default.yaml.example` preserves the required configuration structure without exposing environment-specific paths.
+Local paths belong in `default.yaml`, which should remain untracked. The public `.default.yaml.example` preserves the required configuration structure without exposing environment-specific paths. When `architecture_ref` is omitted or null, the official model is loaded directly from `weight_ref`; a custom architecture YAML is only required for modified models such as the OBB CBAM variant.
 
 ## Reproducibility Notes
 

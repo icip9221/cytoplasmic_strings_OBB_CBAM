@@ -68,7 +68,7 @@ class BlastocystBuilder(_BasePipelineBuilder):
 
     def build(self, cfg: dict[str, Any]) -> BlastocystAlgorithm:
         handler_modules = {
-            "BlastocystYoloOBBHandler": "algorithms.Blastocyst.yolo_obb_handler",
+            "YoloDetectionHandler": "algorithms.Blastocyst.yolo_detection_handler",
         }
         for handler_name in cfg.get("pipeline", {}):
             if module := handler_modules.get(handler_name):

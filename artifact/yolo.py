@@ -2,22 +2,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 @dataclass(slots=True)
-class YoloObbArtifactManifest:
-    """Minimal manifest for a YOLO OBB artifact."""
-
-    weights_path: Path | None = None
-    export_path: Path | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(slots=True)
-class YoloOBBTrainArtifact:
-    """Ultralytics YOLO-OBB training output."""
+class YoloTrainArtifact:
+    """Ultralytics YOLO detection training output."""
 
     model_name: str
-    dataset_variant: str
+    task: str
+    dataset: str
     data_yaml_path: Path
     run_dir: Path
     best_pt_path: Path
@@ -40,10 +31,10 @@ class YoloONNXExportArtifact:
 
 
 @dataclass(slots=True)
-class YoloOBBExperimentArtifact:
-    """Combined YOLO-OBB training, export, and evaluation artifact bundle."""
+class YoloExperimentArtifact:
+    """Combined YOLO training, export, and evaluation artifact bundle."""
 
-    train_artifact: YoloOBBTrainArtifact | None = None
+    train_artifact: YoloTrainArtifact | None = None
     onnx_export_artifact: YoloONNXExportArtifact | None = None
     pt_eval_metrics: dict[str, Any] | None = None
     onnx_eval_metrics: dict[str, Any] | None = None

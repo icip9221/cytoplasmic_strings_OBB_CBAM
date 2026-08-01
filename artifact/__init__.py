@@ -1,13 +1,11 @@
 from .yolo import (
-    YoloOBBExperimentArtifact,
-    YoloOBBTrainArtifact,
+    YoloExperimentArtifact,
     YoloONNXExportArtifact,
-    YoloObbArtifactManifest,
+    YoloTrainArtifact,
 )
 
 __all__ = [
-    "YoloOBBExperimentArtifact",
-    "YoloOBBTrainArtifact",
+    "YoloExperimentArtifact",
     "YoloONNXExportArtifact",
-    "YoloObbArtifactManifest",
+    "YoloTrainArtifact",
 ]

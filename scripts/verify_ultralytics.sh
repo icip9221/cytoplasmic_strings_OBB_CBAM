@@ -6,7 +6,7 @@ EXPECTED_PARAMS="21165368"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME_DIR="$PROJECT_ROOT/ultralytics-cbam"
-MODEL_YAML="$PROJECT_ROOT/configs/yolo11m-obb-1cbam.yaml"
+MODEL_YAML="$PROJECT_ROOT/configs/obb/yolo11m-obb-1cbam.yaml"
 
 if [ ! -d "$RUNTIME_DIR/.git" ]; then
   echo "Missing reconstructed Ultralytics checkout: $RUNTIME_DIR" >&2
@@ -50,9 +50,11 @@ if not imported.is_relative_to(runtime):
     raise SystemExit(f"Expected local ultralytics import from {runtime}, got {imported}")
 
 from ultralytics import YOLO
+from ultralytics.models.yolo.detect import DetectionValidator
 from ultralytics.models.yolo.obb import OBBValidator
 from ultralytics.nn.modules import CBAM
 from ultralytics.nn import tasks
+from ultralytics.utils.patches import torch_load
 
 if CBAM.__module__ != "ultralytics.nn.modules.cbam":
     raise SystemExit(f"Unexpected CBAM implementation: {CBAM.__module__}")
@@ -81,21 +83,28 @@ head = layers[-1]
 if head.__class__.__name__ != "OBB" or list(head.f) != [17, 20, 23]:
     raise SystemExit(f"Unexpected OBB head: {head.__class__.__name__}, from={getattr(head, 'f', None)}")
 
-validator = OBBValidator(args={"task": "obb"})
-iouv = [round(float(value), 2) for value in validator.iouv.tolist()]
 expected_iouv = [0.25, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-if iouv != expected_iouv:
-    raise SystemExit(f"Unexpected OBB IoU vector: {iouv}")
+for validator_cls, task in ((DetectionValidator, "detect"), (OBBValidator, "obb")):
+    validator = validator_cls(args={"task": task})
+    iouv = [round(float(value), 2) for value in validator.iouv.tolist()]
+    if iouv != expected_iouv:
+        raise SystemExit(f"Unexpected {task} IoU vector: {iouv}")
 
-get_stats_source = inspect.getsource(OBBValidator.get_stats)
+get_stats_source = inspect.getsource(DetectionValidator.get_stats)
 if "legacy_ap=not self.training" not in get_stats_source:
-    raise SystemExit("Historical AP integration is not enabled for direct OBB evaluation.")
+    raise SystemExit("Historical AP integration is not enabled for direct detection evaluation.")
 
-from algorithms.Blastocyst._yolo_obb_ops import extract_obb_eval_metrics, load_yolo
+from algorithms.Blastocyst._yolo_detection_ops import extract_yolo_metrics, load_yolo, train_yolo
 
-load_source = inspect.getsource(load_yolo) + inspect.getsource(__import__("algorithms.Blastocyst._yolo_obb_ops", fromlist=["_load_pretrained"])._load_pretrained)
+ops = __import__("algorithms.Blastocyst._yolo_detection_ops", fromlist=["_load_pretrained"])
+load_source = inspect.getsource(load_yolo) + inspect.getsource(ops._load_pretrained)
 if "weights_only=False" not in load_source or "_shift_layer_key" not in load_source:
     raise SystemExit("Project pretrained weight transfer guard is missing.")
+train_source = inspect.getsource(train_yolo)
+if "if architecture:" not in train_source or "load_yolo(pretrained, task=cfg[\"task\"])" not in train_source:
+    raise SystemExit("Optional architecture loading is not configured correctly.")
+if 'kwargs["weights_only"] = False' not in inspect.getsource(torch_load):
+    raise SystemExit("Ultralytics standard checkpoint loader does not force weights_only=False.")
 
 class Box:
     all_ap = np.array([[0.25, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]])
@@ -107,7 +116,7 @@ class DummyMetrics:
     nt_per_image = np.array([692])
     nt_per_class = np.array([889])
 
-summary = extract_obb_eval_metrics(DummyMetrics())
+summary = extract_yolo_metrics(DummyMetrics())
 if summary["AP25"] != 25.0 or summary["AP50"] != 50.0:
     raise SystemExit(f"AP column extraction is wrong: {summary}")
 
@@ -119,7 +128,7 @@ print(f"Ultralytics import: {imported}")
 print(f"CBAM layer: index=11, channels={channels_in}->{channels_out}")
 print(f"OBB head inputs: {list(head.f)}")
 print(f"Parameter count: {params}")
-print(f"Validator IoU vector: {iouv}")
+print(f"Detection IoU vector: {expected_iouv}")
 print(f"AP semantics: AP25={summary['AP25']}, AP50={summary['AP50']}, mAP50-95={summary['mAP50-95']}")
 print("ONNX dependencies: onnx, onnxruntime")
 PY

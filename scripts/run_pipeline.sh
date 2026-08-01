@@ -4,8 +4,9 @@ set -euo pipefail
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <pipeline_config> [runtime_config] [runtime_key] [extra main.py args...]"
   echo "Example:"
+  echo "  $0 configs/yolo_hbb_train.yaml"
   echo "  $0 configs/yolo_obb_train.yaml"
-  echo "  $0 configs/yolo_obb_train.yaml default.yaml"
+  echo "  $0 configs/yolo_hbb_train.yaml default.yaml"
   exit 1
 fi
 

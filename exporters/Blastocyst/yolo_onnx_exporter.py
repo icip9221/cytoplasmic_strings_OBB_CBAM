@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Any
 
 
-def export_blastocyst_yolo_to_onnx(
+def export_yolo_to_onnx(
     source_checkpoint: str | Path,
     output_dir: str | Path,
     *,
@@ -13,15 +12,14 @@ def export_blastocyst_yolo_to_onnx(
     opset: int = 12,
     simplify: bool = True,
     device: int | str | None = 0,
-    task: str = "obb",
-    metadata: dict[str, Any] | None = None,
+    task: str = "detect",
 ) -> Path:
     """Export a YOLO checkpoint to ONNX with Ultralytics."""
 
     try:
         from ultralytics import YOLO
     except ImportError as exc:
-        raise ImportError("Ultralytics is required to export YOLO-OBB checkpoints to ONNX.") from exc
+        raise ImportError("Ultralytics is required to export YOLO checkpoints to ONNX.") from exc
 
     source_checkpoint = Path(source_checkpoint)
     output_dir = Path(output_dir)

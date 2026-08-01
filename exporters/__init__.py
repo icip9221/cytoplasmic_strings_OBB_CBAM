@@ -1,1 +1,1 @@
-"""Export helpers for Blastocyst-String."""
+"""Model export helpers."""

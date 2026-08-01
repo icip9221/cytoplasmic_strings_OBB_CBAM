@@ -52,23 +52,29 @@ if runtime not in imported.parents:
     raise SystemExit(f"Expected local Ultralytics import under {runtime}, got {imported}")
 
 from ultralytics.nn.modules import CBAM
+from ultralytics.models.yolo.detect import DetectionValidator
 from ultralytics.models.yolo.obb import OBBValidator
+from ultralytics.utils.patches import torch_load
 
 if CBAM.__module__ != "ultralytics.nn.modules.cbam":
     raise SystemExit(f"Unexpected CBAM module: {CBAM.__module__}")
 
-validator = OBBValidator(args={"task": "obb"})
-iouv = [round(float(x), 2) for x in validator.iouv.tolist()]
-if iouv != [0.25, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]:
-    raise SystemExit(f"Unexpected OBB IoU vector: {iouv}")
+expected_iouv = [0.25, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+for validator_cls, task in ((DetectionValidator, "detect"), (OBBValidator, "obb")):
+    validator = validator_cls(args={"task": task})
+    iouv = [round(float(x), 2) for x in validator.iouv.tolist()]
+    if iouv != expected_iouv:
+        raise SystemExit(f"Unexpected {task} IoU vector: {iouv}")
 
-source = inspect.getsource(OBBValidator.get_stats)
+source = inspect.getsource(DetectionValidator.get_stats)
 if "legacy_ap=not self.training" not in source:
     raise SystemExit("Historical direct-evaluation AP integration is not active.")
+if 'kwargs["weights_only"] = False' not in inspect.getsource(torch_load):
+    raise SystemExit("Ultralytics safe checkpoint loader does not force weights_only=False.")
 
 print(f"Ultralytics import OK: {imported}")
 print(f"CBAM import OK: {CBAM}")
-print(f"OBB IoU vector OK: {iouv}")
+print(f"Detection IoU vector OK: {expected_iouv}")
 PY
 
 python -m pip install -e "$RUNTIME_DIR"

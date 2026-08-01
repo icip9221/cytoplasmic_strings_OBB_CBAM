@@ -37,38 +37,34 @@ index 0000000..0cd0b0d
 +
 +
 +__all__ = ["CBAM", "ChannelAttention", "SpatialAttention"]
-diff --git a/ultralytics/models/yolo/obb/val.py b/ultralytics/models/yolo/obb/val.py
-index e51d294..c1f5229 100644
---- a/ultralytics/models/yolo/obb/val.py
-+++ b/ultralytics/models/yolo/obb/val.py
-@@ -57,6 +57,10 @@ class OBBValidator(DetectionValidator):
-         """
-         super().__init__(dataloader, save_dir, args, _callbacks)
-         self.args.task = "obb"
+diff --git a/ultralytics/models/yolo/detect/val.py b/ultralytics/models/yolo/detect/val.py
+index 1e5e9f1..70774f5 100644
+--- a/ultralytics/models/yolo/detect/val.py
++++ b/ultralytics/models/yolo/detect/val.py
+@@ -55,7 +55,9 @@ class DetectionValidator(BaseValidator):
+         self.is_lvis = False
+         self.class_map = None
+         self.args.task = "detect"
+-        self.iouv = torch.linspace(0.5, 0.95, 10)  # IoU vector for mAP@0.5:0.95
 +        base_iou = torch.linspace(0.5, 0.95, 10)
 +        extra_iou = torch.tensor([0.25])
 +        self.iouv = torch.cat((extra_iou, base_iou)).to(self.device)
-+        self.niou = self.iouv.numel()
-         self.metrics = OBBMetrics()
+         self.niou = self.iouv.numel()
+         self.metrics = DetMetrics()
  
-     def init_metrics(self, model: torch.nn.Module) -> None:
-@@ -70,6 +74,17 @@ class OBBValidator(DetectionValidator):
-         self.is_dota = isinstance(val, str) and "DOTA" in val  # check if dataset is DOTA format
-         self.confusion_matrix.task = "obb"  # set confusion matrix task to 'obb'
- 
-+    def get_stats(self) -> dict[str, Any]:
-+        """Process OBB statistics with historical AP integration for direct evaluation only."""
+@@ -270,7 +272,12 @@ class DetectionValidator(BaseValidator):
+         Returns:
+             (dict[str, Any]): Dictionary containing metrics results.
+         """
+-        self.metrics.process(save_dir=self.save_dir, plot=self.args.plots, on_plot=self.on_plot)
 +        self.metrics.process(
 +            save_dir=self.save_dir,
 +            plot=self.args.plots,
 +            on_plot=self.on_plot,
 +            legacy_ap=not self.training,
 +        )
-+        self.metrics.clear_stats()
-+        return self.metrics.results_dict
-+
-     def _process_batch(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> dict[str, np.ndarray]:
-         """Compute the correct prediction matrix for a batch of detections and ground truth bounding boxes.
+         self.metrics.clear_stats()
+         return self.metrics.results_dict
  
 diff --git a/ultralytics/nn/modules/__init__.py b/ultralytics/nn/modules/__init__.py
 index fc19560..1ed7a8b 100644
@@ -128,7 +124,7 @@ index fc3e926..82d35ad 100644
 -    # Append sentinel values to beginning and end
 -    mrec = np.concatenate(([0.0], recall, [recall[-1] if len(recall) else 1.0], [1.0]))
 -    mpre = np.concatenate(([1.0], precision, [0.0], [0.0]))
-+    # Historical direct OBB evaluation used a single terminal sentinel.
++    # Historical direct detection evaluation used a single terminal sentinel.
 +    if legacy:
 +        mrec = np.concatenate(([0.0], recall, [1.0]))
 +        mpre = np.concatenate(([1.0], precision, [0.0]))

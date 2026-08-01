@@ -4,16 +4,16 @@ cfg:
   pipeline:
     YoloDetectionHandler:
       config:
-        task: obb
+        task: detect
 
         experiment:
-          name: yolo11m-obb-concat
-          dataset: obb
+          name: yolo11m-hbb-1cbam-v2
+          dataset: hbb
 
         model:
-          architecture_ref: yolo11m_obb_concat
-          weight_ref: yolo11m_obb
-          shift_from: null
+          weight_ref: yolo11m_hbb
+          architecture_ref: yolo11m_hbb_cbam_legacy
+          shift_from: 11
 
         train:
           enabled: true

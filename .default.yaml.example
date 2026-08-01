@@ -1,18 +1,16 @@
 pipeline:
-  yolo_obb:
-    experiments:
-      cbam: yolo11m-obb-1cbam
-
+  yolo_detection:
     datasets:
-      positive_only:
-        # Required: local YOLO OBB dataset configuration.
-        data_yaml: /path/to/dataset/data.yaml
-        # Required: output root. The experiment name is appended automatically.
-        project_root: outputs/yolo_obb/positive_only
+      hbb:
+        data_yaml: /path/to/hbb_dataset/data.yaml
+        project_root: outputs/yolo_detection/hbb
+      obb:
+        data_yaml: /path/to/obb_dataset/data.yaml
+        project_root: outputs/yolo_detection/obb
 
     weights:
-      # Downloaded automatically by Ultralytics if missing.
-      yolo11m_obb_pretrained: yolo11m-obb.pt
+      yolo11m_hbb: yolo11m.pt
+      yolo11m_obb: yolo11m-obb.pt
 
     architectures:
-      yolo11m_obb_cbam: configs/yolo11m-obb-1cbam.yaml
+      yolo11m_obb_cbam: configs/obb/yolo11m-obb-1cbam.yaml

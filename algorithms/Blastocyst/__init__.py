@@ -1,1 +1,1 @@
-"""Blastocyst-domain handlers for Blastocyst-String."""
+"""Blastocyst-domain detection handlers."""
