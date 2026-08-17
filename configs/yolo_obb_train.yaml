@@ -7,11 +7,11 @@ cfg:
         task: obb
 
         experiment:
-          name: yolo11m-obb-concat
+          name: yolo11m-obb
           dataset: obb
 
         model:
-          architecture_ref: yolo11m_obb_concat
+          architecture_ref: yolo11m_obb_cbam
           weight_ref: yolo11m_obb
           shift_from: null
 

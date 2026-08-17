@@ -7,12 +7,12 @@ cfg:
         task: detect
 
         experiment:
-          name: yolo11m-hbb-1cbam-v2
+          name: yolo11m-hbb
           dataset: hbb
 
         model:
           weight_ref: yolo11m_hbb
-          architecture_ref: yolo11m_hbb_cbam_legacy
+          architecture_ref: yolo11m_hbb
           shift_from: 11
 
         train:
